@@ -1,5 +1,7 @@
 package com.librare.library.book;
 
+import com.librare.library.author.AuthorEntity;
+import com.librare.library.genre.GenreEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -16,7 +18,7 @@ public class BookEntity {
     @Id
     private String id;
     private String title;
-    private List<String> authors;
-    private List<String> genres;
+    private List<AuthorEntity> authors;
+    private List<GenreEntity> genres;
     private String publishDate;
 }

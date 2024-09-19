@@ -17,6 +17,12 @@ CREATE TABLE books (
     publish_date DATE
 );
 
+-- Índice author
+CREATE INDEX idx_authors_name ON authors (name);
+
+-- Índice genrer
+CREATE INDEX idx_genres_name ON genres (name);
+
 -- Inserção de dados
 INSERT INTO authors (id, name) VALUES
 ('OL1A', 'J.K. Rowling'),

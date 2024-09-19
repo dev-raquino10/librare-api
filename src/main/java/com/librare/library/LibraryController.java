@@ -1,10 +1,10 @@
 package com.librare.library;
 
-import com.librare.RecentViewsDto;
 import com.librare.library.author.AuthorDto;
 import com.librare.library.book.BookDto;
 import com.librare.library.genre.GenreDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,11 +24,13 @@ public class LibraryController {
         return libraryService.getBookById(id);
     }
 
+    @Cacheable(value = "authors", key = "#name")
     @GetMapping("/author")
     public AuthorDto getAuthorByName(@RequestParam String name) {
         return libraryService.searchAuthorByName(name);
     }
 
+    @Cacheable(value = "genres", key = "#genre")
     @GetMapping("/genre")
     public GenreDto getBooksByGenre(@RequestParam String genre) {
         return libraryService.searchBooksByGenre(genre);

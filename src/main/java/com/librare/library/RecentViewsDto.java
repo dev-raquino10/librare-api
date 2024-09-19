@@ -1,4 +1,4 @@
-package com.librare;
+package com.librare.library;
 
 import lombok.Data;
 
