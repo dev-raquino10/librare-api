@@ -7,8 +7,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericToStringSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.util.List;
-
 @Configuration
 public class RedisConfig {
 
@@ -18,13 +16,8 @@ public class RedisConfig {
         template.setConnectionFactory(redisConnectionFactory);
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(new GenericToStringSerializer<>(Object.class));
-        return template;
-    }
-
-    @Bean
-    public RedisTemplate<String, List<Book>> listRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
-        RedisTemplate<String, List<Book>> template = new RedisTemplate<>();
-        template.setConnectionFactory(redisConnectionFactory);
+        template.setHashKeySerializer(new StringRedisSerializer());
+        template.setHashValueSerializer(new GenericToStringSerializer<>(Object.class));
         return template;
     }
 }

@@ -1,26 +1,31 @@
--- Criação da tabela, se ainda não existir
-CREATE TABLE IF NOT EXISTS book (
-    id BIGSERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    author VARCHAR(255) NOT NULL,
-    isbn BIGINT,
-    pages INTEGER,
-    publish_year INTEGER
+-- Criação das tabelas
+CREATE TABLE authors (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR NOT NULL
 );
 
--- Inserir 50 livros fictícios
-DO $$
-DECLARE
-    i INTEGER;
-BEGIN
-    FOR i IN 1..50 LOOP
-        INSERT INTO book (title, author, isbn, pages, publish_year)
-        VALUES (
-            'Book Title ' || i,
-            'Author ' || i,
-            1000000000000 + i,
-            (RANDOM() * 500)::INTEGER + 50,  -- Número aleatório de páginas entre 50 e 550
-            2000 + (RANDOM() * 24)::INTEGER
-        );
-    END LOOP;
-END $$;
+CREATE TABLE genres (
+    id VARCHAR PRIMARY KEY,
+    name VARCHAR NOT NULL
+);
+
+CREATE TABLE books (
+    id VARCHAR PRIMARY KEY,
+    title VARCHAR NOT NULL,
+    authors TEXT[],
+    genres TEXT[],
+    publish_date DATE
+);
+
+-- Inserção de dados
+INSERT INTO authors (id, name) VALUES
+('OL1A', 'J.K. Rowling'),
+('OL2A', 'George R.R. Martin');
+
+INSERT INTO genres (id, name) VALUES
+('OL1G', 'Fantasy'),
+('OL2G', 'Science Fiction');
+
+INSERT INTO books (id, title, authors, genres, publish_date) VALUES
+('OL1B', 'Harry Potter and the Sorcerers Stone', ARRAY['OL1A'], ARRAY['OL1G'], '1997-06-26'),
+('OL2B', 'A Game of Thrones', ARRAY['OL2A'], ARRAY['OL1G'], '1996-08-06');
