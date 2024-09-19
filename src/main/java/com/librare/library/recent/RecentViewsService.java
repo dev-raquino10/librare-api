@@ -1,61 +1,118 @@
 package com.librare.library.recent;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
+import com.librare.common.utils.LogUtil;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class RecentViewsService {
 
-    private static final String RECENT_BOOKS_KEY = "recent:books";
-    private static final String RECENT_AUTHORS_KEY = "recent:authors";
-    private static final String RECENT_GENRES_KEY = "recent:genres";
     private static final int MAX_RECENT_ITEMS = 10;
+    private final CacheManager cacheManager;
 
-    @Autowired
-    private RedisTemplate<String, String> redisTemplate;
+    public RecentViewsService(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
 
-    // Adiciona um livro visualizado recentemente
     public void addRecentBook(String bookId) {
-        addToRecent(RECENT_BOOKS_KEY, bookId);
+        try {
+            LogUtil.logMessage("Adding recent book: " + bookId);
+            addToRecent("recentBooks", bookId);
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error adding recent book: " + bookId, true, ex);
+        }
     }
 
-    // Adiciona um autor visualizado recentemente
     public void addRecentAuthor(String authorId) {
-        addToRecent(RECENT_AUTHORS_KEY, authorId);
+        try {
+            LogUtil.logMessage("Adding recent author: " + authorId);
+            addToRecent("recentAuthors", authorId);
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error adding recent author: " + authorId, true, ex);
+        }
     }
 
-    // Adiciona um gênero visualizado recentemente
     public void addRecentGenre(String genreId) {
-        addToRecent(RECENT_GENRES_KEY, genreId);
+        try {
+            LogUtil.logMessage("Adding recent genre: " + genreId);
+            addToRecent("recentGenres", genreId);
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error adding recent genre: " + genreId, true, ex);
+        }
     }
 
-    // Adiciona item à lista de recentes e limita o tamanho
-    private void addToRecent(String key, String itemId) {
-        redisTemplate.opsForList().leftPush(key, itemId);
-        redisTemplate.opsForList().trim(key, 0, MAX_RECENT_ITEMS - 1);
+    private void addToRecent(String cacheName, String itemId) {
+        try {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                LogUtil.logMessage("Cache found for: " + cacheName);
+                List<String> recentItems = cache.get("items", List.class);
+                if (recentItems == null) {
+                    recentItems = new ArrayList<>();
+                }
+                recentItems.remove(itemId);
+                recentItems.add(0, itemId);
+                if (recentItems.size() > MAX_RECENT_ITEMS) {
+                    recentItems = recentItems.subList(0, MAX_RECENT_ITEMS);
+                }
+                cache.put("items", recentItems);
+                LogUtil.logObject("Updated recent items in cache", true, recentItems);
+            } else {
+                LogUtil.logMessage("Cache not found for: " + cacheName);
+            }
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error updating recent items in cache: " + cacheName, true, ex);
+        }
     }
 
-    // Retorna os últimos livros visualizados
     public List<String> getRecentBooks() {
-        return getRecent(RECENT_BOOKS_KEY);
+        try {
+            LogUtil.logMessage("Fetching recent books");
+            return getRecent("recentBooks");
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error fetching recent books", true, ex);
+            return List.of();
+        }
     }
 
-    // Retorna os últimos autores visualizados
     public List<String> getRecentAuthors() {
-        return getRecent(RECENT_AUTHORS_KEY);
+        try {
+            LogUtil.logMessage("Fetching recent authors");
+            return getRecent("recentAuthors");
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error fetching recent authors", true, ex);
+            return List.of();
+        }
     }
 
-    // Retorna os últimos gêneros visualizados
     public List<String> getRecentGenres() {
-        return getRecent(RECENT_GENRES_KEY);
+        try {
+            LogUtil.logMessage("Fetching recent genres");
+            return getRecent("recentGenres");
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error fetching recent genres", true, ex);
+            return List.of();
+        }
     }
 
-    // Recupera a lista de recentes do Redis
-    private List<String> getRecent(String key) {
-        List<String> recentItems = redisTemplate.opsForList().range(key, 0, -1);
-        return recentItems != null ? recentItems : List.of();
+    private List<String> getRecent(String cacheName) {
+        try {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                List<String> recentItems = cache.get("items", List.class);
+                LogUtil.logObject("Fetched recent items from cache: " + cacheName, true, recentItems);
+                return recentItems != null ? recentItems : List.of();
+            } else {
+                LogUtil.logMessage("Cache not found for: " + cacheName);
+                return List.of();
+            }
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Error fetching recent items from cache: " + cacheName, true, ex);
+            return List.of();
+        }
     }
 }

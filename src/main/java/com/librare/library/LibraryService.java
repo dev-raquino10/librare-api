@@ -1,5 +1,8 @@
 package com.librare.library;
 
+import com.librare.common.exception.ApiException;
+import com.librare.common.exception.MensagemDto;
+import com.librare.common.utils.LogUtil;
 import com.librare.library.author.AuthorDto;
 import com.librare.library.author.AuthorEntity;
 import com.librare.library.author.AuthorRepository;
@@ -9,94 +12,134 @@ import com.librare.library.book.BookRepository;
 import com.librare.library.genre.GenreDto;
 import com.librare.library.genre.GenreEntity;
 import com.librare.library.genre.GenreRepository;
-import com.librare.library.recent.RecentViewsService;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
+@AllArgsConstructor
 public class LibraryService {
 
     @Autowired
-    private LibraryClient libraryClient;
-
-    @Autowired
-    private RecentViewsService recentViewsService;
-
-
-    @Autowired
     private BookRepository bookRepository;
+
     @Autowired
     private AuthorRepository authorRepository;
+
     @Autowired
     private GenreRepository genreRepository;
 
     public BookDto getBookById(String id) {
-        Optional<BookEntity> book = bookRepository.findById(id);
-        if (book.isPresent()) {
-            recentViewsService.addRecentBook(id);
+        try {
+            LogUtil.logMessage("Buscando livro com ID: " + id);
+            var book = bookRepository.findById(id);
+            if (book.isEmpty()) {
+                LogUtil.logMessage("Livro não encontrado com ID: " + id);
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No book found matching the id"));
+            }
+            LogUtil.logObject("Livro encontrado: ", true, book.get());
             return mapToBookDto(book.get());
+        } catch (ApiException ex) {
+            LogUtil.logStackTrace("Erro ao buscar livro com ID: " + id, true, ex);
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching book id: " + ex.getMessage()));
         }
-        return libraryClient.getBookById(id, "json", "data");
     }
+
+    @Cacheable(value = "authors", key = "#authorName")
+    public List<AuthorDto> searchAuthorByName(String authorName) {
+        try {
+            LogUtil.logMessage("Buscando autor com nome: " + authorName);
+            List<AuthorEntity> authorEntities = authorRepository.findByNameContainingIgnoreCase(authorName);
+
+            if (authorEntities.isEmpty()) {
+                LogUtil.logMessage("Nenhum autor encontrado com o nome: " + authorName);
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No authors found matching the name"));
+            }
+
+            List<AuthorDto> authorDtos = authorEntities.stream()
+                    .map(this::mapToAuthorDto)
+                    .collect(Collectors.toList());
+
+            LogUtil.logObject("Autores encontrados: ", true, authorDtos);
+            return authorDtos;
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Erro ao buscar autor com nome: " + authorName, true, ex);
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching author: " + ex.getMessage()));
+        }
+    }
+
+    @Cacheable(value = "genres", key = "#genre")
+    public List<GenreDto> searchBooksByGenre(String genre) {
+        try {
+            LogUtil.logMessage("Buscando gênero com nome: " + genre);
+            List<GenreEntity> genreEntities = genreRepository.findByNameContainingIgnoreCase(genre);
+
+            if (genreEntities.isEmpty()) {
+                LogUtil.logMessage("Nenhum gênero encontrado com o nome: " + genre);
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No genres found matching the name"));
+            }
+
+            List<GenreDto> genreDtos = genreEntities.stream()
+                    .map(this::mapToGenreDto)
+                    .collect(Collectors.toList());
+
+            LogUtil.logObject("Gêneros encontrados: ", true, genreDtos);
+            return genreDtos;
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Erro ao buscar gênero com nome: " + genre, true, ex);
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching genre: " + ex.getMessage()));
+        }
+    }
+
 
     public List<BookDto> getAllBooks() {
-        List<BookEntity> books = bookRepository.findAll();
-        return books.stream().map(this::mapToBookDto).collect(Collectors.toList());
+        try {
+            LogUtil.logMessage("Buscando todos os livros");
+            List<BookEntity> books = bookRepository.findAll();
+            if (books.isEmpty()) {
+                LogUtil.logMessage("Nenhum livro encontrado");
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No books found"));
+            }
+
+            List<BookDto> bookDtos = books.stream().map(this::mapToBookDto).collect(Collectors.toList());
+            LogUtil.logObject("Livros encontrados: ", true, bookDtos);
+            return bookDtos;
+        } catch (Exception ex) {
+            LogUtil.logStackTrace("Erro ao buscar todos os livros", true, ex);
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching all books: " + ex.getMessage()));
+        }
     }
 
-    public AuthorDto searchAuthorByName(String authorName) {
-        Optional<AuthorEntity> author = Optional.ofNullable(authorRepository.findByName(authorName));
-        if (author.isPresent()) {
-            recentViewsService.addRecentAuthor(author.get().getId());
-            return mapToAuthorDto(author.get());
-        }
+    private AuthorDto mapToAuthorDto(AuthorEntity author) {
+        List<BookDto> books = bookRepository.findByAuthorsContaining(author).stream()
+                .map(this::mapToBookDto)
+                .collect(Collectors.toList());
 
-        AuthorDto authorDto = libraryClient.searchAuthorByName(authorName);
-        recentViewsService.addRecentAuthor(authorDto.getKey());
-
-        return authorDto;
+        return new AuthorDto(author.getId(), author.getName(), books);
     }
 
-    public GenreDto searchBooksByGenre(String genre) {
-        Optional<GenreEntity> genreEntity = Optional.ofNullable(genreRepository.findByName(genre));
-        if (genreEntity.isPresent()) {
-            recentViewsService.addRecentGenre(genreEntity.get().getId());
-            return mapToGenreDto(genreEntity.get());
-        }
+    private GenreDto mapToGenreDto(GenreEntity genre) {
+        List<BookDto> books = bookRepository.findByGenresContaining(genre.getName()).stream()
+                .map(this::mapToBookDto)
+                .collect(Collectors.toList());
 
-        GenreDto genreDto = libraryClient.searchBooksByGenre(genre);
-        recentViewsService.addRecentGenre(genreDto.getKey());
-
-        return genreDto;
+        return new GenreDto(genre.getId(), genre.getName(), books);
     }
 
     private BookDto mapToBookDto(BookEntity book) {
         return new BookDto(book.getId(), book.getTitle(), mapToAuthorDtos(book.getAuthors()), mapToGenreDtos(book.getGenres()), book.getPublishDate(), book.getCoverUrl());
     }
 
-    private AuthorDto mapToAuthorDto(AuthorEntity author) {
-        return new AuthorDto(author.getId(), author.getName());
-    }
-
-    private GenreDto mapToGenreDto(GenreEntity genre) {
-        return new GenreDto(genre.getId(), genre.getName(), mapToBookDtos(genre.getBooks()));
-    }
-
-    private List<GenreDto> mapToGenreDtos(List<GenreEntity> genres) {
-        return genres.stream()
-                .map(this::mapToGenreDto)
-                .collect(Collectors.toList());
-    }
-
     private List<AuthorDto> mapToAuthorDtos(List<AuthorEntity> authors) {
         return authors.stream().map(this::mapToAuthorDto).collect(Collectors.toList());
     }
 
-    private List<BookDto> mapToBookDtos(List<BookEntity> books) {
-        return books.stream().map(this::mapToBookDto).collect(Collectors.toList());
+    private List<GenreDto> mapToGenreDtos(List<GenreEntity> genres) {
+        return genres.stream().map(this::mapToGenreDto).collect(Collectors.toList());
     }
 }

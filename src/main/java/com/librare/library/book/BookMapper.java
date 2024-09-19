@@ -1,7 +1,6 @@
 package com.librare.library.book;
 
 import com.librare.library.author.AuthorDto;
-import com.librare.library.author.AuthorEntity;
 import com.librare.library.author.AuthorRepository;
 import com.librare.library.genre.GenreEntity;
 import com.librare.library.genre.GenreRepository;
@@ -20,30 +19,8 @@ public class BookMapper {
     @Autowired
     private GenreRepository genreRepository;
 
-    public BookEntity toEntity(BookResponse bookResponse) {
-        if (bookResponse == null) return null;
-
-        BookEntity bookEntity = new BookEntity();
-        bookEntity.setId(bookResponse.getKey());
-        bookEntity.setTitle(bookResponse.getTitle());
-        bookEntity.setPublishDate(bookResponse.getPublishDate());
-        bookEntity.setCoverUrl(bookResponse.getCoverUrl());
-
-        List<AuthorEntity> authors = bookResponse.getAuthors().stream()
-                .map(authorDto -> authorRepository.findByName(authorDto.getName()))
-                .collect(Collectors.toList());
-        bookEntity.setAuthors(authors);
-
-        List<GenreEntity> genres = bookResponse.getSubjects().stream()
-                .map(genreName -> genreRepository.findByName(genreName))
-                .collect(Collectors.toList());
-        bookEntity.setGenres(genres);
-
-        bookEntity.setIsbn(bookResponse.getIsbn());
-        bookEntity.setNumberOfPages(bookResponse.getNumberOfPages());
-
-        return bookEntity;
-    }
+    @Autowired
+    private BookRepository bookRepository;
 
     public BookResponse toResponse(BookEntity bookEntity) {
         if (bookEntity == null) return null;
@@ -55,7 +32,13 @@ public class BookMapper {
         bookResponse.setCoverUrl(bookEntity.getCoverUrl());
 
         bookResponse.setAuthors(bookEntity.getAuthors().stream()
-                .map(author -> new AuthorDto(author.getId(), author.getName()))
+                .map(author -> {
+                    List<BookDto> books = bookRepository.findByAuthorsContaining(author).stream()
+                            .map(this::mapToBookDto)
+                            .collect(Collectors.toList());
+
+                    return new AuthorDto(author.getId(), author.getName(), books);
+                })
                 .collect(Collectors.toList()));
 
         bookResponse.setSubjects(bookEntity.getGenres().stream()
@@ -66,5 +49,9 @@ public class BookMapper {
         bookResponse.setNumberOfPages(bookEntity.getNumberOfPages());
 
         return bookResponse;
+    }
+
+    private BookDto mapToBookDto(BookEntity book) {
+        return new BookDto(book.getId(), book.getTitle(), null, null, book.getPublishDate(), book.getCoverUrl());
     }
 }
