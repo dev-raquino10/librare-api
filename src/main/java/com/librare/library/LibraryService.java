@@ -40,7 +40,7 @@ public class LibraryService {
             var book = bookRepository.findById(id);
             if (book.isEmpty()) {
                 LogUtil.logMessage("Livro não encontrado com ID: " + id);
-                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No book found matching the id"));
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Livro não encontrado pelo id informado."));
             }
             LogUtil.logObject("Livro encontrado: ", true, book.get());
             return mapToBookDto(book.get());
@@ -58,7 +58,7 @@ public class LibraryService {
 
             if (authorEntities.isEmpty()) {
                 LogUtil.logMessage("Nenhum autor encontrado com o nome: " + authorName);
-                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No authors found matching the name"));
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Nenhum autor encontrato com o nome " + authorName));
             }
 
             List<AuthorDto> authorDtos = authorEntities.stream()
@@ -81,7 +81,7 @@ public class LibraryService {
 
             if (genreEntities.isEmpty()) {
                 LogUtil.logMessage("Nenhum gênero encontrado com o nome: " + genre);
-                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No genres found matching the name"));
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Nenhum gênero encontrado com o nome " + genre));
             }
 
             List<GenreDto> genreDtos = genreEntities.stream()
@@ -103,7 +103,7 @@ public class LibraryService {
             List<BookEntity> books = bookRepository.findAll();
             if (books.isEmpty()) {
                 LogUtil.logMessage("Nenhum livro encontrado");
-                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("404", "No books found"));
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Nenhum livro disponível."));
             }
 
             List<BookDto> bookDtos = books.stream().map(this::mapToBookDto).collect(Collectors.toList());
