@@ -1,0 +1,108 @@
+{
+  "info": {
+    "name": "Librare API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get Book by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/library/book/:id",
+          "host": [
+            "http://localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "library",
+            "book",
+            ":id"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get All Books",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/library/book/all",
+          "host": [
+            "http://localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "library",
+            "book",
+            "all"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Author by Name",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/library/authors/:name",
+          "host": [
+            "http://localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "library",
+            "authors",
+            ":name"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Books by Genre",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/library/genres/:name",
+          "host": [
+            "http://localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "library",
+            "genres",
+            ":name"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Recent Views",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/api/library/book/recent",
+          "host": [
+            "http://localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "library",
+            "book",
+            "recent"
+          ]
+        }
+      }
+    }
+  ]
+}

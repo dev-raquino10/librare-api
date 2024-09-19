@@ -7,5 +7,9 @@ import java.util.List;
 
 @Repository
 public interface BookRepository extends JpaRepository<BookEntity, String> {
+
     List<BookEntity> findByGenresContaining(String genre);
+
+    List<BookEntity> findAll();
+
 }

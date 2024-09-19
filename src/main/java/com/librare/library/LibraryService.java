@@ -9,6 +9,7 @@ import com.librare.library.book.BookRepository;
 import com.librare.library.genre.GenreDto;
 import com.librare.library.genre.GenreEntity;
 import com.librare.library.genre.GenreRepository;
+import com.librare.library.recent.RecentViewsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -42,6 +43,11 @@ public class LibraryService {
         return libraryClient.getBookById(id, "json", "data");
     }
 
+    public List<BookDto> getAllBooks() {
+        List<BookEntity> books = bookRepository.findAll();
+        return books.stream().map(this::mapToBookDto).collect(Collectors.toList());
+    }
+
     public AuthorDto searchAuthorByName(String authorName) {
         Optional<AuthorEntity> author = Optional.ofNullable(authorRepository.findByName(authorName));
         if (author.isPresent()) {
@@ -69,28 +75,21 @@ public class LibraryService {
     }
 
     private BookDto mapToBookDto(BookEntity book) {
-        BookDto bookDto = new BookDto();
-        bookDto.setKey(book.getId());
-        bookDto.setTitle(book.getTitle());
-        bookDto.setAuthors(mapToAuthorDtos(book.getAuthors()));
-        bookDto.setSubjects(book.getGenres());
-        bookDto.setPublishDate(book.getPublishDate().toString());
-        return bookDto;
+        return new BookDto(book.getId(), book.getTitle(), mapToAuthorDtos(book.getAuthors()), mapToGenreDtos(book.getGenres()), book.getPublishDate(), book.getCoverUrl());
     }
 
     private AuthorDto mapToAuthorDto(AuthorEntity author) {
-        AuthorDto authorDto = new AuthorDto();
-        authorDto.setKey(author.getId());
-        authorDto.setName(author.getName());
-        return authorDto;
+        return new AuthorDto(author.getId(), author.getName());
     }
 
     private GenreDto mapToGenreDto(GenreEntity genre) {
-        GenreDto genreDto = new GenreDto();
-        genreDto.setKey(genre.getId());
-        genreDto.setName(genre.getName());
-        genreDto.setBooks(mapToBookDtos(genre.getBooks()));
-        return genreDto;
+        return new GenreDto(genre.getId(), genre.getName(), mapToBookDtos(genre.getBooks()));
+    }
+
+    private List<GenreDto> mapToGenreDtos(List<GenreEntity> genres) {
+        return genres.stream()
+                .map(this::mapToGenreDto)
+                .collect(Collectors.toList());
     }
 
     private List<AuthorDto> mapToAuthorDtos(List<AuthorEntity> authors) {
