@@ -1,9 +1,10 @@
 package com.librare.library;
 
 import com.librare.common.exception.ApiException;
-import com.librare.library.author.AuthorDto;
-import com.librare.library.book.BookDto;
-import com.librare.library.genre.GenreDto;
+import com.librare.library.author.AuthorResponse;
+import com.librare.library.book.BookEntity;
+import com.librare.library.book.BookResponse;
+import com.librare.library.genre.GenreResponse;
 import com.librare.library.recent.RecentViewsDto;
 import com.librare.library.recent.RecentViewsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ public class LibraryController {
      * @throws ApiException se o livro não for encontrado.
      */
     @GetMapping("/books/{id}")
-    public BookDto getBookById(@PathVariable String id) {
+    public BookEntity getBookById(@PathVariable String id) {
         return libraryService.getBookById(id);
     }
 
@@ -43,7 +44,7 @@ public class LibraryController {
      * @return Lista de BookDto contendo os detalhes de todos os livros.
      */
     @GetMapping("/books/all")
-    public List<BookDto> getAllBooks() {
+    public List<BookResponse> getAllBooks() {
         return libraryService.getAllBooks();
     }
 
@@ -56,7 +57,7 @@ public class LibraryController {
      */
     @Cacheable(value = "authors", key = "#name")
     @GetMapping("/authors/{name}")
-    public List<AuthorDto> getAuthorByName(@PathVariable String name) {
+    public List<AuthorResponse> getAuthorByName(@PathVariable String name) {
         return libraryService.searchAuthorByName(name);
     }
 
@@ -68,8 +69,8 @@ public class LibraryController {
      * @throws ApiException se nenhum gênero for encontrado.
      */
     @Cacheable(value = "genres", key = "#genre")
-    @GetMapping("/genres/{name}")
-    public List<GenreDto> getBooksByGenre(@PathVariable String genre) {
+    @GetMapping("/genres/{genre}")
+    public List<GenreResponse> getBooksByGenre(@PathVariable String genre) {
         return libraryService.searchBooksByGenre(genre);
     }
 

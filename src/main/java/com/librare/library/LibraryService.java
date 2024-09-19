@@ -3,15 +3,16 @@ package com.librare.library;
 import com.librare.common.exception.ApiException;
 import com.librare.common.exception.MensagemDto;
 import com.librare.common.utils.LogUtil;
-import com.librare.library.author.AuthorDto;
 import com.librare.library.author.AuthorEntity;
 import com.librare.library.author.AuthorRepository;
-import com.librare.library.book.BookDto;
+import com.librare.library.author.AuthorResponse;
 import com.librare.library.book.BookEntity;
 import com.librare.library.book.BookRepository;
-import com.librare.library.genre.GenreDto;
+import com.librare.library.book.BookResponse;
 import com.librare.library.genre.GenreEntity;
 import com.librare.library.genre.GenreRepository;
+import com.librare.library.genre.GenreResponse;
+import com.librare.library.recent.RecentViewsService;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -34,7 +35,9 @@ public class LibraryService {
     @Autowired
     private GenreRepository genreRepository;
 
-    public BookDto getBookById(String id) {
+    private RecentViewsService recentViewsService;
+
+    public BookEntity getBookById(String id) {
         try {
             LogUtil.logMessage("Buscando livro com ID: " + id);
             var book = bookRepository.findById(id);
@@ -43,7 +46,8 @@ public class LibraryService {
                 throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Livro não encontrado pelo id informado."));
             }
             LogUtil.logObject("Livro encontrado: ", true, book.get());
-            return mapToBookDto(book.get());
+            recentViewsService.addRecentBook(book.get().getTitle());
+            return book.get();
         } catch (ApiException ex) {
             LogUtil.logStackTrace("Erro ao buscar livro com ID: " + id, true, ex);
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching book id: " + ex.getMessage()));
@@ -51,22 +55,28 @@ public class LibraryService {
     }
 
     @Cacheable(value = "authors", key = "#authorName")
-    public List<AuthorDto> searchAuthorByName(String authorName) {
+    public List<AuthorResponse> searchAuthorByName(String authorName) {
         try {
             LogUtil.logMessage("Buscando autor com nome: " + authorName);
-            List<AuthorEntity> authorEntities = authorRepository.findByNameContainingIgnoreCase(authorName);
+            List<AuthorEntity> authors = authorRepository.findByNameContainingIgnoreCase(authorName);
 
-            if (authorEntities.isEmpty()) {
+            if (authors.isEmpty()) {
                 LogUtil.logMessage("Nenhum autor encontrado com o nome: " + authorName);
-                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Nenhum autor encontrato com o nome " + authorName));
+                throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Nenhum autor encontrado com o nome " + authorName));
             }
 
-            List<AuthorDto> authorDtos = authorEntities.stream()
-                    .map(this::mapToAuthorDto)
-                    .collect(Collectors.toList());
+            LogUtil.logObject("Autores encontrados: ", true, authors);
 
-            LogUtil.logObject("Autores encontrados: ", true, authorDtos);
-            return authorDtos;
+            return authors.stream().map(author -> {
+
+                AuthorResponse.AuthorDetails details = new AuthorResponse.AuthorDetails(author.getName(), author.getBooks().stream()
+                        .map(this::mapToBookDetails)
+                        .collect(Collectors.toList()));
+                AuthorResponse response = new AuthorResponse(details);
+                recentViewsService.addRecentAuthor(response.getAuthor().getName());
+                return response;
+            }).collect(Collectors.toList());
+
         } catch (Exception ex) {
             LogUtil.logStackTrace("Erro ao buscar autor com nome: " + authorName, true, ex);
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching author: " + ex.getMessage()));
@@ -74,22 +84,26 @@ public class LibraryService {
     }
 
     @Cacheable(value = "genres", key = "#genre")
-    public List<GenreDto> searchBooksByGenre(String genre) {
+    public List<GenreResponse> searchBooksByGenre(String genre) {
         try {
             LogUtil.logMessage("Buscando gênero com nome: " + genre);
-            List<GenreEntity> genreEntities = genreRepository.findByNameContainingIgnoreCase(genre);
+            List<GenreEntity> genres = genreRepository.findByNameContainingIgnoreCase(genre);
 
-            if (genreEntities.isEmpty()) {
+            if (genres.isEmpty()) {
                 LogUtil.logMessage("Nenhum gênero encontrado com o nome: " + genre);
                 throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Nenhum gênero encontrado com o nome " + genre));
             }
 
-            List<GenreDto> genreDtos = genreEntities.stream()
-                    .map(this::mapToGenreDto)
-                    .collect(Collectors.toList());
+            LogUtil.logObject("Gêneros encontrados: ", true, genres);
 
-            LogUtil.logObject("Gêneros encontrados: ", true, genreDtos);
-            return genreDtos;
+            return genres.stream().map(genreEntity -> {
+                GenreResponse response = new GenreResponse(genreEntity.getName(), genreEntity.getBooks().stream()
+                        .map(this::mapToBookDetailsWithAuthor)
+                        .collect(Collectors.toList()));
+                recentViewsService.addRecentGenre(response.getGenre());
+                return response;
+            }).collect(Collectors.toList());
+
         } catch (Exception ex) {
             LogUtil.logStackTrace("Erro ao buscar gênero com nome: " + genre, true, ex);
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching genre: " + ex.getMessage()));
@@ -97,7 +111,7 @@ public class LibraryService {
     }
 
 
-    public List<BookDto> getAllBooks() {
+    public List<BookResponse> getAllBooks() {
         try {
             LogUtil.logMessage("Buscando todos os livros");
             List<BookEntity> books = bookRepository.findAll();
@@ -106,40 +120,49 @@ public class LibraryService {
                 throw new ApiException(HttpStatus.NOT_FOUND, new MensagemDto("400", "Nenhum livro disponível."));
             }
 
-            List<BookDto> bookDtos = books.stream().map(this::mapToBookDto).collect(Collectors.toList());
-            LogUtil.logObject("Livros encontrados: ", true, bookDtos);
-            return bookDtos;
+            LogUtil.logObject("Livros encontrados: ", true, books);
+
+            return books.stream()
+                    .map(this::mapToBookResponse)
+                    .collect(Collectors.toList());
+
         } catch (Exception ex) {
             LogUtil.logStackTrace("Erro ao buscar todos os livros", true, ex);
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, new MensagemDto("500", "Error fetching all books: " + ex.getMessage()));
         }
     }
 
-    private AuthorDto mapToAuthorDto(AuthorEntity author) {
-        List<BookDto> books = bookRepository.findByAuthorsContaining(author).stream()
-                .map(this::mapToBookDto)
-                .collect(Collectors.toList());
+    public BookResponse mapToBookResponse(BookEntity book) {
+        String genres = book.getGenres().stream()
+                .map(GenreEntity::getName)
+                .collect(Collectors.joining(", "));
 
-        return new AuthorDto(author.getId(), author.getName(), books);
+        return new BookResponse(
+                book.getTitle(),
+                book.getAuthors().isEmpty() ? null : book.getAuthors().get(0).getName(),
+                genres,
+                book.getPublishDate(),
+                book.getIsbn(),
+                book.getNumberOfPages()
+        );
     }
 
-    private GenreDto mapToGenreDto(GenreEntity genre) {
-        List<BookDto> books = bookRepository.findByGenresContaining(genre.getName()).stream()
-                .map(this::mapToBookDto)
-                .collect(Collectors.toList());
-
-        return new GenreDto(genre.getId(), genre.getName(), books);
+    public AuthorResponse.BookDetails mapToBookDetails(BookEntity book) {
+        return new AuthorResponse.BookDetails(
+                book.getTitle(),
+                book.getPublishDate(),
+                book.getIsbn(),
+                book.getNumberOfPages()
+        );
     }
 
-    private BookDto mapToBookDto(BookEntity book) {
-        return new BookDto(book.getId(), book.getTitle(), mapToAuthorDtos(book.getAuthors()), mapToGenreDtos(book.getGenres()), book.getPublishDate(), book.getCoverUrl());
-    }
-
-    private List<AuthorDto> mapToAuthorDtos(List<AuthorEntity> authors) {
-        return authors.stream().map(this::mapToAuthorDto).collect(Collectors.toList());
-    }
-
-    private List<GenreDto> mapToGenreDtos(List<GenreEntity> genres) {
-        return genres.stream().map(this::mapToGenreDto).collect(Collectors.toList());
+    public GenreResponse.BookDetails mapToBookDetailsWithAuthor(BookEntity book) {
+        return new GenreResponse.BookDetails(
+                book.getTitle(),
+                book.getAuthors().stream().map(AuthorEntity::getName).collect(Collectors.joining(", ")),
+                book.getPublishDate(),
+                book.getIsbn(),
+                book.getNumberOfPages()
+        );
     }
 }

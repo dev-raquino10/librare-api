@@ -27,12 +27,12 @@ public class RecentViewsService {
         }
     }
 
-    public void addRecentAuthor(String authorId) {
+    public void addRecentAuthor(String author) {
         try {
-            LogUtil.logMessage("Adding recent author: " + authorId);
-            addToRecent("recentAuthors", authorId);
+            LogUtil.logMessage("Adding recent author: " + author);
+            addToRecent("recentAuthors", author);
         } catch (Exception ex) {
-            LogUtil.logStackTrace("Error adding recent author: " + authorId, true, ex);
+            LogUtil.logStackTrace("Error adding recent author: " + author, true, ex);
         }
     }
 

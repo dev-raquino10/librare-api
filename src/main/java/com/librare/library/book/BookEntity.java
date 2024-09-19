@@ -1,5 +1,6 @@
 package com.librare.library.book;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.librare.library.author.AuthorEntity;
 import com.librare.library.genre.GenreEntity;
 import jakarta.persistence.*;
@@ -22,12 +23,14 @@ public class BookEntity {
     private Integer numberOfPages;
 
     @ManyToMany
+    @JsonIgnore
     @JoinTable(name = "book_authors",
             joinColumns = @JoinColumn(name = "book_id"),
             inverseJoinColumns = @JoinColumn(name = "author_id"))
     private List<AuthorEntity> authors;
 
     @ManyToMany
+    @JsonIgnore
     @JoinTable(name = "book_genres",
             joinColumns = @JoinColumn(name = "book_id"),
             inverseJoinColumns = @JoinColumn(name = "genre_id"))

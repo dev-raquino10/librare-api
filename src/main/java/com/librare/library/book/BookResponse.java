@@ -1,18 +1,17 @@
 package com.librare.library.book;
 
-import com.librare.library.author.AuthorDto;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 
-import java.util.List;
-
 @Data
+@Builder
+@AllArgsConstructor
 public class BookResponse {
-    private String key;
     private String title;
-    private List<AuthorDto> authors;
+    private String author;
+    private String genre;
     private String publishDate;
-    private String coverUrl;
-    private List<String> subjects;
-    private Integer numberOfPages;
     private String isbn;
+    private int numberOfPages;
 }

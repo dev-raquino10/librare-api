@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-    public interface AuthorRepository extends JpaRepository<AuthorEntity, String> {
-        List<AuthorEntity> findByNameContainingIgnoreCase(String name);
-    }
+public interface AuthorRepository extends JpaRepository<AuthorEntity, String> {
+    List<AuthorEntity> findByNameContainingIgnoreCase(String name);
+}

@@ -1,5 +1,6 @@
 package com.librare.library.genre;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.librare.library.book.BookEntity;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -19,5 +20,6 @@ public class GenreEntity {
     private String name;
 
     @ManyToMany(mappedBy = "genres")
+    @JsonIgnore
     private List<BookEntity> books;
 }
